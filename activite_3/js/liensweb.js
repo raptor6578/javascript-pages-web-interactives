@@ -2,11 +2,14 @@
 Activité 3
 */
 
+const listeLiens = [];
+const urlListe = 'https://oc-jswebsrv.herokuapp.com/api/liens';
+const urlAjouter = 'https://oc-jswebsrv.herokuapp.com/api/lien';
+
 const alerte = document.createElement('div');
 alerte.id = 'alerte';
 alerte.style.padding = '15px';
 alerte.style.marginBottom = '10px';
-alerte.style.backgroundColor = ' #e2f1fe';
 alerte.style.display = 'none';
 
 const bouton = document.createElement('button');
@@ -24,7 +27,7 @@ contenu.appendChild(alerte);
 contenu.appendChild(bouton);
 contenu.appendChild(liste);
 
-ajaxGet('https://oc-jswebsrv.herokuapp.com/api/liens',res => {
+ajaxGet(urlListe,res => {
     JSON.parse(res).forEach((data) => {
         ajouterElement(data);
     });
@@ -42,7 +45,6 @@ function creerFormulaire() {
     auteur.type = 'text';
     auteur.name = 'auteur';
     auteur.id = 'auteur';
-    auteur.required = true;
     auteur.placeholder = 'Entrez votre nom';
     auteur.style.marginRight = '10px';
     formulaire.appendChild(auteur);
@@ -51,16 +53,14 @@ function creerFormulaire() {
     titre.type = 'text';
     titre.name = 'titre';
     titre.id = 'titre';
-    titre.required = true;
     titre.placeholder = 'Entrez le titre du lien';
     titre.style.marginRight = '10px';
     formulaire.appendChild(titre);
 
     const url = document.createElement('input');
-    url.type = 'url';
+    url.type = 'text';
     url.name = 'url';
     url.id = 'url';
-    url.required = true;
     url.placeholder = 'Entrez l\'URL du lien';
     url.style.marginRight = '10px';
     formulaire.appendChild(url);
@@ -74,24 +74,57 @@ function creerFormulaire() {
 
     formulaire.addEventListener('submit', (e) => {
         e.preventDefault();
-        const data = new FormData(formulaire);
-        ajaxPost('https://oc-jswebsrv.herokuapp.com/api/lien', data, () => {
-            const elem = {
-                titre: formulaire.elements.titre.value,
-                url: formulaire.elements.url.value,
-                auteur: formulaire.elements.auteur.value
-            };
-            ajouterElement(elem, true);
-            alerte.innerText = `Le lien "${elem.titre}" a bien été ajouté.`;
-            alerte.style.display = 'block';
-            setTimeout(() => alerte.style.display = 'none', 2000);
-        });
-        contenu.replaceChild(bouton, formulaire);
-    });
 
+        if (formulaire.elements.auteur.value &&
+          formulaire.elements.titre.value &&
+          formulaire.elements.url.value) {
+
+            const regExp = new RegExp("^(http|https)://", "i");
+            let url = formulaire.elements.url.value;
+            const match = url.match(regExp);
+            if (!match) url = `http://${url}`;
+
+            if (listeLiens.findIndex(elem => elem.url === url) === -1) {
+
+                const elem = {
+                    auteur: formulaire.elements.auteur.value,
+                    titre: formulaire.elements.titre.value,
+                    url
+                };
+
+                const formData = new FormData();
+                for (const key of Object.keys(elem)) {
+                    formData.append(key, elem[key]);
+                }
+
+                ajaxPost(urlAjouter, formData, () => {
+                    ajouterElement(elem, true);
+                    showAlerte(`Le lien "${elem.titre}" a bien été ajouté.`, '#e2f1fe');
+                });
+
+                contenu.replaceChild(bouton, formulaire);
+
+            } else {
+                showAlerte('Le lien est déjà présent dans la liste.', '#faebeb');
+            }
+
+        } else {
+            showAlerte('Veuillez remplir tous les champs du formulaire.', '#faebeb');
+        }
+
+    });
+}
+
+function showAlerte(innerText, backgroundColor) {
+    alerte.innerText = innerText;
+    alerte.style.display = 'block';
+    alerte.style.backgroundColor = backgroundColor;
+    setTimeout(() => alerte.style.display = 'none', 2000);
 }
 
 function ajouterElement(data, firstChild) {
+
+    listeLiens.push(data);
 
     const elem = document.createElement('li');
     elem.className = 'lien';
